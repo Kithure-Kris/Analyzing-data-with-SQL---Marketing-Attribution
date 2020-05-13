@@ -1,0 +1,97 @@
+--How many campaigns and sources does CoolTShirts use? Which source is used for each campaign?
+
+select count(distinct utm_source) from page_visits;
+
+select count(distinct utm_campaign) from page_visits;
+
+select distinct utm_source, utm_campaign from page_visits;
+
+--What pages are on the CoolTShirts website?
+select distinct page_name from page_visits;
+
+--How many first touches is each campaign responsible for?
+WITH first_touch AS (
+    SELECT user_id,
+        MIN(timestamp) as first_touch_at
+    FROM page_visits
+    GROUP BY user_id),
+ft_attr AS (
+SELECT ft.user_id, 
+       ft.first_touch_at, 
+       pv.utm_source, 
+       pv.utm_campaign
+FROM first_touch ft
+join page_visits pv
+  on ft.user_id = pv.user_id
+  and ft.first_touch_at = pv.timestamp)
+SELECT ft_attr.utm_source, 
+       ft_attr.utm_campaign,
+       COUNT(*)
+from ft_attr
+group by 2
+order by 3 desc;
+
+--How many last touches is each campaign responsible for?
+with last_touch as(
+  select user_id, 
+         MAX(timestamp) as last_touch_at
+  from page_visits
+  where page_name = '4 - purchase'
+  group by user_id
+),
+lt_attr as(
+  select lt.user_id, 
+         lt.last_touch_at, 
+         pv.utm_source, 
+         pv.utm_campaign, 
+         pv.page_name
+  from last_touch lt
+  join page_visits pv
+  on lt.user_id = pv.user_id
+  and lt.last_touch_at = pv.timestamp
+)
+select lt_attr.utm_source,
+       lt_attr.utm_campaign, 
+       count(*)
+from lt_attr
+group by 1, 2
+order by 3 desc;
+
+--How many visitors make a purchase?
+select count(distinct user_id) 
+from page_visits
+where page_name = '4 - purchase';
+--361 visitors make a purchase
+
+--How many last touches on the purchase page is each campaign responsible for?
+with last_touch as(
+  select user_id, 
+         MAX(timestamp) as last_touch_at
+  from page_visits
+  group by user_id
+),
+lt_attr as(
+  select lt.user_id, 
+         lt.last_touch_at, 
+         pv.utm_source, 
+         pv.utm_campaign, 
+         pv.page_name
+  from last_touch lt
+  join page_visits pv
+  on lt.user_id = pv.user_id
+  and lt.last_touch_at = pv.timestamp
+)
+select lt_attr.utm_source,
+       lt_attr.utm_campaign, 
+       count(*)
+from lt_attr
+group by 1, 2
+order by 3 desc;
+
+--CoolTShirts can re-invest in 5 campaigns. Given your findings in the project, which should they pick and why?
+--1. Weekly Newsletter
+--2. Retargetting ad
+--3. Retargetting campaign
+--4. Getting to know cool t-shirts
+--5. Ten crazy cool t-shirt facts
+--The above campaigns generated the maximum last touches on the purchase page.
